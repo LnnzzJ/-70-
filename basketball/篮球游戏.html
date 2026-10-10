@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>十中校友篮球赛大战傅俊翔</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23e65100'/><line x1='5' y1='50' x2='95' y2='50' stroke='%23bf360c' stroke-width='4'/><line x1='50' y1='5' x2='50' y2='95' stroke='%23bf360c' stroke-width='4'/></svg>">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0f0f1a;
+    color: #fff;
+    font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 16px;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+    background: linear-gradient(90deg, #ff6b35, #f7c548);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .game-container {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(255, 107, 53, 0.15);
+    max-width: 100%;
+  }
+  canvas {
+    display: block;
+    background: #1a1a2e;
+    max-width: 100%;
+    height: auto;
+  }
+  @media (max-width: 768px) {
+    h1 { font-size: 22px; margin: 20px 0 10px 0; }
+    .game-container { margin: 0 10px; }
+    .hud { margin: 0 10px 10px 10px; }
+    .score-board { padding: 4px 8px; gap: 10px; }
+    .team-score .label { font-size: 9px; }
+    .team-score .value { font-size: 18px; }
+    .timer { padding: 4px 8px; }
+    .timer .label { font-size: 9px; }
+    .timer .value { font-size: 16px; }
+    .overlay h2 { font-size: 26px; }
+    .overlay p { font-size: 14px; }
+    .controls { font-size: 11px; gap: 12px; }
+  }
+  .hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0 10px 10px 10px;
+    pointer-events: none;
+  }
+  .score-board {
+    background: rgba(0,0,0,0.7);
+    border-radius: 8px;
+    padding: 10px 16px;
+    display: flex;
+    gap: 20px;
+    backdrop-filter: blur(8px);
+  }
+  .team-score {
+    text-align: center;
+  }
+  .team-score .label {
+    font-size: 11px;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .team-score .value {
+    font-size: 28px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .team-score.player .value { color: #4fc3f7; }
+  .team-score.ai .value { color: #ef5350; }
+  .timer {
+    background: rgba(0,0,0,0.7);
+    border-radius: 8px;
+    padding: 10px 16px;
+    text-align: center;
+    backdrop-filter: blur(8px);
+  }
+  .timer .label {
+    font-size: 11px;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .timer .value {
+    font-size: 24px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .controls {
+    margin-top: 16px;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+    font-size: 13px;
+    opacity: 0.8;
+  }
+  .control-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .key {
+    display: inline-block;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    min-width: 28px;
+    text-align: center;
+  }
+
+  /* 虚拟按钮 */
+  #mobileControls {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    left: 0;
+    right: 0;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 100;
+    pointer-events: none;
+  }
+  .joystick {
+    width: 140px;
+    height: 140px;
+    position: relative;
+    pointer-events: auto;
+    touch-action: none;
+  }
+  .joystick-base {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    border: 2px solid rgba(255,255,255,0.2);
+  }
+  .joystick-knob {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(79, 195, 247, 0.5);
+    border: 2px solid rgba(79, 195, 247, 0.7);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transition: transform 0.08s ease-out;
+  }
+
+  .skill-btns {
+    display: grid;
+    grid-template-columns: repeat(2, 64px);
+    gap: 8px;
+    align-content: end;
+    pointer-events: auto;
+  }
+  .skill-btn {
+    background: rgba(79, 195, 247, 0.3);
+    border: 1px solid rgba(79, 195, 247, 0.5);
+    border-radius: 16px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 14px 8px;
+    touch-action: none;
+    user-select: none;
+    transition: background 0.1s, transform 0.1s;
+  }
+  .skill-btn:active {
+    background: rgba(79, 195, 247, 0.6);
+    transform: scale(0.95);
+  }
+  .btn-shoot {
+    grid-column: span 2;
+    background: rgba(255, 152, 0, 0.4);
+    border-color: rgba(255, 152, 0, 0.6);
+    font-size: 16px;
+    padding: 18px;
+  }
+  .btn-shoot:active {
+    background: rgba(255, 152, 0, 0.6);
+    transform: scale(0.95);
+  }
+  /* 手机端显示虚拟按钮，隐藏键盘说明 */
+  @media (max-width: 768px) {
+    #mobileControls {
+      display: flex;
+    }
+    .controls {
+      display: none;
+    }
+  }
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 15, 26, 0.92);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    backdrop-filter: blur(4px);
+  }
+  .overlay.hidden { display: none; }
+  .overlay h2 {
+    font-size: 36px;
+    margin-bottom: 12px;
+  }
+  .overlay p {
+    font-size: 16px;
+    opacity: 0.7;
+    margin-bottom: 24px;
+    text-align: center;
+    line-height: 1.6;
+  }
+  .btn {
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 14px 40px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(255, 107, 53, 0.4);
+  }
+  .game-msg {
+    position: absolute;
+    top: 12%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 24px;
+    font-weight: 900;
+    pointer-events: none;
+    z-index: 15;
+    opacity: 0;
+    transition: opacity 0.3s;
+    white-space: nowrap;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+    text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+  /* 电脑端提示词更大 */
+  @media (min-width: 769px) {
+    .game-msg {
+      font-size: 32px;
+    }
+  }
+  .game-msg.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<h1>十中校友篮球赛</h1>
+
+<div class="hud">
+  <div class="score-board">
+    <div class="team-score player">
+      <div class="label">玩家</div>
+      <div class="value" id="playerScore">0</div>
+    </div>
+    <div class="team-score ai">
+      <div class="label">傅俊翔</div>
+      <div class="value" id="aiScore">0</div>
+    </div>
+  </div>
+  <div class="timer">
+    <div class="label">时间</div>
+    <div class="value" id="timer">60</div>
+  </div>
+</div>
+
+<div class="game-container">
+  <canvas id="gameCanvas" width="1200" height="750"></canvas>
+
+  <div class="game-msg" id="gameMsg"></div>
+
+  <div class="overlay" id="startOverlay">
+    <h2>大战傅俊翔</h2>
+    <p>控制你的球员运球突破，避开防守，投篮得分！<br>
+    三分线外投进得 3 分，内线得 2 分。</p>
+    <button class="btn" id="startBtn">开始游戏</button>
+  </div>
+
+  <div class="overlay hidden" id="endOverlay">
+    <h2 id="endTitle">比赛结束</h2>
+    <p id="endDesc"></p>
+    <button class="btn" id="restartBtn">再来一局</button>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="control-item"><span class="key">W A S D</span> / <span class="key">方向键</span> 移动</div>
+  <div class="control-item"><span class="key">空格</span> 投篮</div>
+  <div class="control-item"><span class="key">E</span> 抢断</div>
+  <div class="control-item"><span class="key">F</span> 盖帽</div>
+  <div class="control-item"><span class="key">Shift</span> 冲刺闪避</div>
+  <div class="control-item"><span class="key">Q</span> 免疫抢断</div>
+</div>
+
+<!-- 移动端虚拟按钮 -->
+<div id="mobileControls">
+  <div class="joystick" id="joystick">
+    <div class="joystick-base"></div>
+    <div class="joystick-knob" id="joystickKnob"></div>
+  </div>
+  <div class="skill-btns">
+    <button class="skill-btn btn-shoot" id="btnShoot">投篮<br><small>空格</small></button>
+    <button class="skill-btn" id="btnSteal">抢断<br><small>E</small></button>
+    <button class="skill-btn" id="btnBlock">盖帽<br><small>F</small></button>
+    <button class="skill-btn" id="btnDodge">闪避<br><small>Shift</small></button>
+    <button class="skill-btn" id="btnImmune">免疫<br><small>Q</small></button>
+  </div>
+</div>
+
+<!-- 预加载图片资源 -->
+<img src="assets/ai-player.png" alt="" style="display:none" id="aiPlayerImg">
+<img src="assets/earlobe.png" alt="" style="display:none" id="earlobeImg">
+
+<script>
+// ===== 游戏配置 =====
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width;
+const H = canvas.height;
+
+// 球场尺寸（相对画布边距）
+const COURSE = {
+  margin: 40,
+  get left() { return this.margin; },
+  get right() { return W - this.margin; },
+  get top() { return this.margin; },
+  get bottom() { return H - this.margin; },
+  get width() { return this.right - this.left; },
+  get height() { return this.bottom - this.top; },
+  get centerX() { return W / 2; },
+  get centerY() { return H / 2; },
+  // 三分线距离篮筐的距离（像素）
+  threePointDist: 180,
+  // 篮筐位置（左右各一个）
+  get leftHoop() { return { x: this.left + 30, y: this.centerY }; },
+  get rightHoop() { return { x: this.right - 30, y: this.centerY }; },
+  // 禁区（三秒区）宽度
+  keyWidth: 80,
+  keyHeight: 200,
+};
+
+// 颜色
+const COLORS = {
+  court: '#c8956c',
+  courtDark: '#b8845a',
+  line: '#ffffff',
+  player: '#4fc3f7',
+  playerDark: '#0288d1',
+  ai: '#ef5350',
+  aiDark: '#c62828',
+  ball: '#e65100',
+  ballLine: '#bf360c',
+  hoop: '#d32f2f',
+  backboard: '#e0e0e0',
+};
+
+// ===== 游戏状态 =====
+let gameRunning = false;
+let gameTime = 60;
+let playerScore = 0;
+let aiScore = 0;
+let keys = {};
+let ball;
+let player;
+let aiPlayer;
+let lastTime = 0;
+let msgTimer = null;
+
+// ===== 实体类 =====
+class Player {
+  constructor(x, y, isPlayer, color, darkColor, imagePath) {
+    this.x = x;
+    this.y = y;
+    this.radius = 24;
+    this.speed = 3.2;
+    this.sprintSpeed = 5.5;
+    this.color = color;
+    this.darkColor = darkColor;
+    this.isPlayer = isPlayer;
+    this.hasBall = false;
+    this.direction = 1; // 1=right, -1=left
+    this.shootCooldown = 0;
+    this.dodgeCooldown = 0;
+    this.dodgeDistance = 70;
+    // 走路动画状态
+    this.walkPhase = 0;
+    this.isMoving = false;
+    this.prevX = x;
+    this.prevY = y;
+    // 投篮动画状态
+    this.isShooting = false;
+    this.shootAnimFrame = 0;
+    this.shootAnimMax = 18; // 动画总帧数
+    // 闪避虚化效果
+    this.isDodging = false;
+    this.dodgeAnimFrame = 0;
+    this.dodgeAnimMax = 15;
+    // 免疫抢断状态
+    this.isImmune = false;
+    this.immuneTimer = 0;
+    this.immuneCooldown = 0;
+    // 图片贴图
+    this.image = null;
+    if (imagePath === 'ai') {
+      this.image = document.getElementById('aiPlayerImg');
+    }
+  }
+
+  startShootAnim() {
+    this.isShooting = true;
+    this.shootAnimFrame = 0;
+  }
+
+  update() {
+    this.prevX = this.x;
+    this.prevY = this.y;
+    if (this.isPlayer) {
+      this.handleInput();
+    } else {
+      this.aiMove();
+    }
+    this.checkBounds();
+    if (this.shootCooldown > 0) this.shootCooldown--;
+    if (this.dodgeCooldown > 0) this.dodgeCooldown--;
+    // 更新投篮动画
+    if (this.isShooting) {
+      this.shootAnimFrame++;
+      if (this.shootAnimFrame >= this.shootAnimMax) {
+        this.isShooting = false;
+      }
+    }
+    // 更新闪避动画
+    if (this.isDodging) {
+      this.dodgeAnimFrame++;
+      if (this.dodgeAnimFrame >= this.dodgeAnimMax) {
+        this.isDodging = false;
+      }
+    }
+    // 更新免疫状态
+    if (this.isImmune) {
+      this.immuneTimer--;
+      if (this.immuneTimer <= 0) {
+        this.isImmune = false;
+      }
+    }
+    if (this.immuneCooldown > 0) this.immuneCooldown--;
+    // 更新走路动画
+    const movedX = this.x - this.prevX;
+    const movedY = this.y - this.prevY;
+    const movedDist = Math.sqrt(movedX * movedX + movedY * movedY);
+    this.isMoving = movedDist > 0.5;
+    if (this.isMoving) {
+      this.walkPhase += movedDist * 0.15;
+    }
+  }
+
+  handleInput() {
+    let dx = 0, dy = 0;
+    const speed = this.speed;
+    if (keys['ArrowUp'] || keys['KeyW']) dy -= speed;
+    if (keys['ArrowDown'] || keys['KeyS']) dy += speed;
+    if (keys['ArrowLeft'] || keys['KeyA']) dx -= speed;
+    if (keys['ArrowRight'] || keys['KeyD']) dx += speed;
+
+    // 归一化对角线速度
+    if (dx !== 0 && dy !== 0) {
+      dx *= 0.707;
+      dy *= 0.707;
+    }
+    this.x += dx;
+    this.y += dy;
+    if (dx > 0) this.direction = 1;
+    else if (dx < 0) this.direction = -1;
+  }
+
+  dodge() {
+    if (this.dodgeCooldown > 0) return false;
+    // 确定闪避方向：优先用当前移动方向，否则用面向方向
+    let dx = 0, dy = 0;
+    if (keys['ArrowUp'] || keys['KeyW']) dy -= 1;
+    if (keys['ArrowDown'] || keys['KeyS']) dy += 1;
+    if (keys['ArrowLeft'] || keys['KeyA']) dx -= 1;
+    if (keys['ArrowRight'] || keys['KeyD']) dx += 1;
+    // 如果没有方向输入，就向面向方向闪避
+    if (dx === 0 && dy === 0) {
+      dx = this.direction;
+    }
+    // 归一化
+    const len = Math.sqrt(dx * dx + dy * dy);
+    dx /= len;
+    dy /= len;
+    // 位移
+    this.x += dx * this.dodgeDistance;
+    this.y += dy * this.dodgeDistance;
+    this.dodgeCooldown = 60; // 1秒冷却（60帧）
+    return true;
+  }
+
+  aiMove() {
+    // AI 简单逻辑：如果有就跑到中场附近投超远三分，没球就防守
+    let target;
+    if (this.hasBall) {
+      // 跑到中场附近投篮
+      target = {
+        x: W * 0.4,
+        y: COURSE.leftHoop.y,
+      };
+    } else {
+      // 防守：如果玩家持球就主动冲过来抢断，否则站在球和篮筐之间
+      if (player.hasBall) {
+        target = player; // 主动靠近持球玩家抢断
+      } else {
+        target = {
+          x: (ball.x + COURSE.leftHoop.x) / 2,
+          y: (ball.y + COURSE.leftHoop.y) / 2,
+        };
+      }
+    }
+    const dx = target.x - this.x;
+    const dy = target.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 5) {
+      this.x += (dx / dist) * this.speed * 0.8;
+      this.y += (dy / dist) * this.speed * 0.8;
+    }
+    if (dx > 0) this.direction = 1;
+    else if (dx < 0) this.direction = -1;
+  }
+
+  checkBounds() {
+    this.x = Math.max(COURSE.left + this.radius, Math.min(COURSE.right - this.radius, this.x));
+    this.y = Math.max(COURSE.top + this.radius, Math.min(COURSE.bottom - this.radius, this.y));
+  }
+
+  draw() {
+    const x = this.x;
+    const y = this.y;
+    const dir = this.direction; // 1=面朝右, -1=面朝左
+
+    // 闪避时半透明虚化
+    if (this.isDodging) {
+      ctx.globalAlpha = 0.4;
+    }
+
+    // 阴影
+    ctx.beginPath();
+    ctx.ellipse(x, y + 18, 22, 6, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fill();
+
+    // 如果有图片贴图，绘制图片
+    if (this.image && this.image.complete && this.image.naturalHeight > 0) {
+      // 走路动画：上下轻微跳动
+      let bob = this.isMoving ? Math.abs(Math.sin(this.walkPhase)) * 3 : 0;
+      // 投篮动画：起跳效果
+      if (this.isShooting) {
+        const t = this.shootAnimFrame / this.shootAnimMax;
+        if (t < 0.3) {
+          // 蓄力：轻微下蹲
+          bob -= (0.3 - t) * 8;
+        } else if (t < 0.7) {
+          // 起跳：向上跳
+          const p = (t - 0.3) / 0.4;
+          bob += Math.sin(p * Math.PI) * 15;
+        } else {
+          // 落地：落回
+          const p = (t - 0.7) / 0.3;
+          bob += Math.sin(Math.PI - p * Math.PI) * 5;
+        }
+      }
+      const drawW = 100;
+      const drawH = drawW * (this.image.height / this.image.width);
+      ctx.save();
+      ctx.translate(x, y - bob);
+      if (dir === -1) {
+        ctx.scale(-1, 1); // 水平翻转
+      }
+      // 白色描边阴影，让黑色线条在任何背景上都清晰
+      ctx.shadowColor = 'rgba(255,255,255,0.9)';
+      ctx.shadowBlur = 4;
+      ctx.drawImage(this.image, -drawW / 2, -drawH + 10, drawW, drawH);
+      ctx.restore();
+      return;
+    }
+
+    ctx.strokeStyle = this.darkColor;
+    ctx.fillStyle = this.color;
+    ctx.lineCap = 'round';
+
+    // 走路动画偏移
+    const walkSin = this.isMoving ? Math.sin(this.walkPhase) : 0;
+    const legSwing = walkSin * 9;      // 腿前后摆动幅度
+    const armSwing = -walkSin * 7;     // 手臂反方向摆动
+    const bodyBob = this.isMoving ? Math.abs(Math.cos(this.walkPhase)) * 2 : 0; // 身体上下起伏
+
+    const cy = y - bodyBob; // 身体中心 Y
+
+    // ===== 腿（在身体后面）=====
+    ctx.beginPath();
+    // 左腿
+    ctx.moveTo(x, cy + 9);
+    ctx.lineTo(x - 6, cy + 18 + legSwing);
+    // 右腿
+    ctx.moveTo(x, cy + 9);
+    ctx.lineTo(x + 6, cy + 18 - legSwing);
+    ctx.strokeStyle = this.darkColor;
+    ctx.lineWidth = 5;
+    ctx.stroke();
+
+    // ===== 身体 =====
+    ctx.beginPath();
+    ctx.moveTo(x, cy - 6);
+    ctx.lineTo(x, cy + 9);
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = 8;
+    ctx.stroke();
+
+    // ===== 手臂 =====
+    ctx.beginPath();
+    if (this.isShooting) {
+      // 投篮动画
+      const t = this.shootAnimFrame / this.shootAnimMax; // 0~1
+      let armX, armY;
+      if (t < 0.35) {
+        // 蓄力：举球到头顶上方
+        const p = t / 0.35;
+        armX = dir * (6 + p * 3);
+        armY = -6 - p * 8;
+      } else if (t < 0.65) {
+        // 出手：手臂向前上方伸展
+        const p = (t - 0.35) / 0.3;
+        armX = dir * (9 + p * 10);
+        armY = -14 - p * 6;
+      } else {
+        // 跟随：手臂下落
+        const p = (t - 0.65) / 0.35;
+        armX = dir * (19 - p * 8);
+        armY = -20 + p * 10;
+      }
+      // 投篮手（向上伸展）
+      ctx.moveTo(x, cy - 3);
+      ctx.lineTo(x + armX, cy + armY);
+      // 另一只手（辅助，自然下垂）
+      ctx.moveTo(x, cy - 3);
+      ctx.lineTo(x - dir * 7, cy + 5);
+    } else if (this.hasBall) {
+      // 持球姿势：一只手在身前运球
+      ctx.moveTo(x, cy - 3);
+      ctx.lineTo(x + dir * 12, cy + 6); // 持球手
+      ctx.moveTo(x, cy - 3);
+      ctx.lineTo(x - dir * 9, cy + 3 + armSwing); // 另一只手
+    } else {
+      // 普通走路：双臂摆动
+      ctx.moveTo(x, cy - 3);
+      ctx.lineTo(x - dir * 9, cy + 6 + armSwing);
+      ctx.moveTo(x, cy - 3);
+      ctx.lineTo(x + dir * 9, cy + 6 - armSwing);
+    }
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = 5;
+    ctx.stroke();
+
+    // ===== 头 =====
+    ctx.beginPath();
+    ctx.arc(x, cy - 15, 10, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+    ctx.strokeStyle = this.darkColor;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // 眼睛（朝向指示）
+    ctx.beginPath();
+    ctx.arc(x + dir * 4, cy - 16, 2.2, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+
+    // 恢复透明度
+    ctx.globalAlpha = 1;
+  }
+}
+
+class Ball {
+  constructor() {
+    this.x = W / 2;
+    this.y = H / 2;
+    this.radius = 12;
+    this.vx = 0;
+    this.vy = 0;
+    this.inPlayerHands = false;
+    this.inAIHands = false;
+    this.shooting = false;
+    this.shootTarget = null;
+    this.bounceTimer = 0;
+  }
+
+  update() {
+    if (this.inPlayerHands && player.hasBall) {
+      // 球跟随玩家
+      this.x = player.x + player.direction * 25;
+      this.y = player.y + 10;
+      this.bounceTimer += 0.15;
+      this.vx = 0;
+      this.vy = 0;
+    } else if (this.inAIHands && aiPlayer.hasBall) {
+      this.x = aiPlayer.x - aiPlayer.direction * 25;
+      this.y = aiPlayer.y + 10;
+      this.vx = 0;
+      this.vy = 0;
+    } else if (this.shooting) {
+      // 投篮抛物线
+      this.x += this.vx;
+      this.y += this.vy;
+      this.vy += 0.28; // 加大重力，更有重量感
+
+      // 检查是否到达篮筐（加大判定范围，更容易进）
+      if (this.shootTarget) {
+        const distToHoop = Math.sqrt(
+          Math.pow(this.x - this.shootTarget.x, 2) +
+          Math.pow(this.y - this.shootTarget.y, 2)
+        );
+        if (distToHoop < 35 && this.vy > -1) {
+          // 进球！
+          this.onScore();
+        }
+      }
+
+      // 出界或落地
+      if (this.y > H - COURSE.margin + 50 || this.x < COURSE.margin - 50 || this.x > W - COURSE.margin + 50) {
+        this.resetBall();
+      }
+    } else {
+      // 自由滚动
+      this.x += this.vx;
+      this.y += this.vy;
+      this.vx *= 0.95; // 加大摩擦，滚得更慢更沉
+      this.vy *= 0.95;
+
+      // 边界反弹（减弱反弹，更有重量感）
+      if (this.x < COURSE.left + this.radius) { this.x = COURSE.left + this.radius; this.vx *= -0.5; }
+      if (this.x > COURSE.right - this.radius) { this.x = COURSE.right - this.radius; this.vx *= -0.5; }
+      if (this.y < COURSE.top + this.radius) { this.y = COURSE.top + this.radius; this.vy *= -0.5; }
+      if (this.y > COURSE.bottom - this.radius) { this.y = COURSE.bottom - this.radius; this.vy *= -0.5; }
+
+      // 检测球员捡球
+      this.checkPickup();
+    }
+  }
+
+  checkPickup() {
+    const distToPlayer = Math.sqrt(
+      Math.pow(this.x - player.x, 2) + Math.pow(this.y - player.y, 2)
+    );
+    const distToAI = Math.sqrt(
+      Math.pow(this.x - aiPlayer.x, 2) + Math.pow(this.y - aiPlayer.y, 2)
+    );
+
+    if (distToPlayer < player.radius + this.radius + 5) {
+      this.inPlayerHands = true;
+      this.inAIHands = false;
+      this.shooting = false;
+      player.hasBall = true;
+      aiPlayer.hasBall = false;
+    } else if (distToAI < aiPlayer.radius + this.radius + 5) {
+      this.inAIHands = true;
+      this.inPlayerHands = false;
+      this.shooting = false;
+      aiPlayer.hasBall = true;
+      player.hasBall = false;
+    }
+  }
+
+  shoot(fromPlayer) {
+    if (this.shooting) return;
+
+    let targetHoop;
+    if (fromPlayer) {
+      // 玩家投篮：投向右边篮筐
+      targetHoop = COURSE.rightHoop;
+    } else {
+      // AI 投篮：投向左边篮筐
+      targetHoop = COURSE.leftHoop;
+    }
+    this.shootAt(fromPlayer, targetHoop);
+  }
+
+  shootAt(fromPlayer, targetHoop) {
+    if (this.shooting) return;
+
+    this.lastShooter = fromPlayer ? 'player' : 'ai';
+
+    if (fromPlayer) {
+      player.hasBall = false;
+      this.inPlayerHands = false;
+      player.startShootAnim(); // 触发投篮动画
+    } else {
+      aiPlayer.hasBall = false;
+      this.inAIHands = false;
+      aiPlayer.startShootAnim(); // 触发投篮动画
+    }
+
+    this.shootTarget = targetHoop;
+    this.shooting = true;
+
+    // 计算投篮速度（精确抛物线）
+    const startX = fromPlayer ? player.x : aiPlayer.x;
+    const startY = fromPlayer ? player.y : aiPlayer.y;
+    const dx = targetHoop.x - startX;
+    const dy = targetHoop.y - startY;
+
+    // 精确抛物线计算，让球正好落到篮筐位置
+    const time = 32; // 帧数
+    const gravity = 0.28;
+    this.vx = dx / time;
+    this.vy = (dy - 0.5 * gravity * time * time) / time;
+
+    // 判断是否三分
+    const distToHoop = Math.sqrt(
+      Math.pow(startX - targetHoop.x, 2) + Math.pow(startY - targetHoop.y, 2)
+    );
+    this.isThreePointer = distToHoop > COURSE.threePointDist;
+  }
+
+  onScore() {
+    // 用坐标判断是哪个篮筐，避免对象引用比较失效
+    const isRightHoop = Math.abs(this.shootTarget.x - COURSE.rightHoop.x) < 5;
+    if (this.isThreePointer) {
+      if (isRightHoop) {
+        playerScore += 3;
+        showMsg('三分球 +3!', '#4fc3f7');
+      } else {
+        aiScore += 3;
+        showMsg('傅俊翔三分 +3!', '#ef5350');
+      }
+    } else {
+      if (isRightHoop) {
+        playerScore += 2;
+        showMsg('进球 +2!', '#4fc3f7');
+      } else {
+        aiScore += 2;
+        showMsg('傅俊翔进球 +2!', '#ef5350');
+      }
+    }
+    updateScoreboard();
+    this.resetBall();
+  }
+
+  resetBall() {
+    this.x = W / 2;
+    this.y = H / 2;
+    this.vx = 0;
+    this.vy = 0;
+    this.shooting = false;
+    this.inPlayerHands = false;
+    this.inAIHands = false;
+    this.shootTarget = null;
+    player.hasBall = false;
+    aiPlayer.hasBall = false;
+    // 随机一个球员先拿到球
+    if (Math.random() > 0.5) {
+      this.inPlayerHands = true;
+      player.hasBall = true;
+    } else {
+      this.inAIHands = true;
+      aiPlayer.hasBall = true;
+    }
+  }
+
+  draw() {
+    // 阴影
+    ctx.beginPath();
+    ctx.ellipse(this.x, this.y + this.radius + 2, this.radius * 0.8, 3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fill();
+
+    // 球
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = COLORS.ball;
+    ctx.fill();
+    ctx.strokeStyle = COLORS.ballLine;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 球纹
+    ctx.beginPath();
+    ctx.moveTo(this.x - this.radius, this.y);
+    ctx.lineTo(this.x + this.radius, this.y);
+    ctx.moveTo(this.x, this.y - this.radius);
+    ctx.lineTo(this.x, this.y + this.radius);
+    ctx.strokeStyle = COLORS.ballLine;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+}
+
+// ===== 绘制函数 =====
+function drawCourt() {
+  // 地板渐变（模拟光照：左上亮，右下暗）
+  const grad = ctx.createLinearGradient(COURSE.left, COURSE.top, COURSE.right, COURSE.bottom);
+  grad.addColorStop(0, '#d4a76a');
+  grad.addColorStop(0.5, COLORS.court);
+  grad.addColorStop(1, '#a8784a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(COURSE.left, COURSE.top, COURSE.width, COURSE.height);
+
+  // 耳垂背景
+  const earlobeImg = document.getElementById('earlobeImg');
+  if (earlobeImg && earlobeImg.complete && earlobeImg.naturalWidth > 0) {
+    ctx.globalAlpha = 0.3; // 更明显一点
+    const imgW = 500;
+    const imgH = imgW * (earlobeImg.height / earlobeImg.width);
+    ctx.drawImage(
+      earlobeImg,
+      W / 2 - imgW / 2,
+      H / 2 - imgH / 2,
+      imgW,
+      imgH
+    );
+    ctx.globalAlpha = 1;
+  }
+
+  // 木纹纹理（半透明线条）
+  ctx.strokeStyle = 'rgba(139, 90, 43, 0.2)';
+  ctx.lineWidth = 1;
+  for (let y = COURSE.top; y < COURSE.bottom; y += 18) {
+    ctx.beginPath();
+    ctx.moveTo(COURSE.left, y);
+    ctx.lineTo(COURSE.right, y);
+    ctx.stroke();
+  }
+  // 垂直木纹
+  for (let x = COURSE.left; x < COURSE.right; x += 120) {
+    ctx.beginPath();
+    ctx.moveTo(x, COURSE.top);
+    ctx.lineTo(x + 20, COURSE.bottom);
+    ctx.stroke();
+  }
+
+  // 禁区浅色填充
+  const keyW = COURSE.keyWidth;
+  const keyH = COURSE.keyHeight;
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.fillRect(COURSE.left, COURSE.centerY - keyH / 2, keyW, keyH);
+  ctx.fillRect(COURSE.right - keyW, COURSE.centerY - keyH / 2, keyW, keyH);
+
+  // 场地边缘暗角（增加立体感）
+  const vgrad = ctx.createRadialGradient(
+    COURSE.centerX, COURSE.centerY, COURSE.width * 0.3,
+    COURSE.centerX, COURSE.centerY, COURSE.width * 0.6
+  );
+  vgrad.addColorStop(0, 'rgba(0,0,0,0)');
+  vgrad.addColorStop(1, 'rgba(0,0,0,0.2)');
+  ctx.fillStyle = vgrad;
+  ctx.fillRect(COURSE.left, COURSE.top, COURSE.width, COURSE.height);
+
+  // 外边框（带阴影）
+  ctx.strokeStyle = COLORS.line;
+  ctx.lineWidth = 3;
+  ctx.shadowColor = 'rgba(0,0,0,0.3)';
+  ctx.shadowBlur = 8;
+  ctx.strokeRect(COURSE.left, COURSE.top, COURSE.width, COURSE.height);
+  ctx.shadowBlur = 0;
+
+  // 中线
+  ctx.beginPath();
+  ctx.moveTo(COURSE.centerX, COURSE.top);
+  ctx.lineTo(COURSE.centerX, COURSE.bottom);
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // 中圈
+  ctx.beginPath();
+  ctx.arc(COURSE.centerX, COURSE.centerY, 50, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 左禁区边线
+  ctx.strokeRect(COURSE.left, COURSE.centerY - keyH / 2, keyW, keyH);
+  // 右禁区边线
+  ctx.strokeRect(COURSE.right - keyW, COURSE.centerY - keyH / 2, keyW, keyH);
+
+  // 禁区半圆
+  ctx.beginPath();
+  ctx.arc(COURSE.left + keyW, COURSE.centerY, keyH / 2, -Math.PI / 2, Math.PI / 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(COURSE.right - keyW, COURSE.centerY, keyH / 2, Math.PI / 2, Math.PI * 1.5);
+  ctx.stroke();
+
+  // 三分线（左右两个圆弧）
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(COURSE.leftHoop.x, COURSE.leftHoop.y, COURSE.threePointDist, -Math.PI / 2, Math.PI / 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(COURSE.rightHoop.x, COURSE.rightHoop.y, COURSE.threePointDist, Math.PI / 2, Math.PI * 1.5);
+  ctx.stroke();
+
+  // 篮筐和篮板
+  drawHoop(COURSE.leftHoop, 1);
+  drawHoop(COURSE.rightHoop, -1);
+}
+
+function drawHoop(pos, side) {
+  // 篮板阴影
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(pos.x + side * 5 + 2, pos.y - 28, side * 4, 60);
+
+  // 篮板（带渐变）
+  const bbGrad = ctx.createLinearGradient(pos.x, pos.y - 30, pos.x, pos.y + 30);
+  bbGrad.addColorStop(0, '#f5f5f5');
+  bbGrad.addColorStop(1, '#bdbdbd');
+  ctx.fillStyle = bbGrad;
+  ctx.fillRect(pos.x + side * 5, pos.y - 30, side * 4, 60);
+  ctx.strokeStyle = '#9e9e9e';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(pos.x + side * 5, pos.y - 30, side * 4, 60);
+
+  // 篮筐阴影
+  ctx.beginPath();
+  ctx.ellipse(pos.x + 2, pos.y + 2, 10, 6, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fill();
+
+  // 篮筐（带立体感椭圆）
+  ctx.beginPath();
+  ctx.ellipse(pos.x, pos.y, 10, 6, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = COLORS.hoop;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(211, 47, 47, 0.3)';
+  ctx.fill();
+
+  // 篮网（三角形示意）
+  ctx.beginPath();
+  ctx.moveTo(pos.x - 8, pos.y);
+  ctx.lineTo(pos.x - 4, pos.y + 16);
+  ctx.lineTo(pos.x + 4, pos.y + 16);
+  ctx.lineTo(pos.x + 8, pos.y);
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // 篮网中间交叉线
+  ctx.beginPath();
+  ctx.moveTo(pos.x - 8, pos.y);
+  ctx.lineTo(pos.x + 4, pos.y + 16);
+  ctx.moveTo(pos.x + 8, pos.y);
+  ctx.lineTo(pos.x - 4, pos.y + 16);
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+}
+
+// ===== UI 更新 =====
+function updateScoreboard() {
+  document.getElementById('playerScore').textContent = playerScore;
+  document.getElementById('aiScore').textContent = aiScore;
+}
+
+function showMsg(text, color) {
+  const msgEl = document.getElementById('gameMsg');
+  msgEl.textContent = text;
+  msgEl.style.color = color;
+  msgEl.classList.add('show');
+  if (msgTimer) clearTimeout(msgTimer);
+  msgTimer = setTimeout(() => {
+    msgEl.classList.remove('show');
+  }, 1200);
+}
+
+// ===== 游戏循环 =====
+function gameLoop(timestamp) {
+  if (!gameRunning) return;
+
+  const delta = timestamp - lastTime;
+  lastTime = timestamp;
+
+  // 更新
+  player.update();
+  aiPlayer.update();
+  ball.update();
+
+  // AI 自动投篮逻辑（在中场附近投超远三分）
+  if (aiPlayer.hasBall) {
+    const midCourtPos = {
+      x: W * 0.4,
+      y: COURSE.leftHoop.y,
+    };
+    const distToMidCourt = Math.sqrt(
+      Math.pow(aiPlayer.x - midCourtPos.x, 2) +
+      Math.pow(aiPlayer.y - midCourtPos.y, 2)
+    );
+    if (distToMidCourt < 30 && aiPlayer.shootCooldown <= 0) {
+      ball.shoot(false);
+      aiPlayer.shootCooldown = 120;
+    }
+  }
+
+  // AI 主动抢断逻辑
+  if (!aiPlayer.hasBall && player.hasBall && !player.isImmune) {
+    const distToPlayer = Math.sqrt(
+      Math.pow(aiPlayer.x - player.x, 2) +
+      Math.pow(aiPlayer.y - player.y, 2)
+    );
+    if (distToPlayer < 45 && Math.random() < 0.02) { // 每秒约1次概率抢断
+      // AI 抢断成功
+      player.hasBall = false;
+      aiPlayer.hasBall = true;
+      ball.inPlayerHands = false;
+      ball.inAIHands = true;
+      ball.shooting = false;
+      ball.vx = 0;
+      ball.vy = 0;
+      showMsg('被抢断!', '#ef5350');
+    }
+  }
+
+  // AI 盖帽逻辑：玩家投篮时，靠近就能打飞
+  if (ball.shooting && ball.shootTarget === COURSE.rightHoop) {
+    const distToBall = Math.sqrt(
+      Math.pow(aiPlayer.x - ball.x, 2) +
+      Math.pow(aiPlayer.y - ball.y, 2)
+    );
+    if (distToBall < 50 && Math.random() < 0.03) {
+      // AI 盖帽成功
+      ball.shooting = false;
+      ball.vx = (Math.random() - 0.5) * 8;
+      ball.vy = -5;
+      ball.shootTarget = null;
+      showMsg('傅俊翔盖帽!', '#ef5350');
+    }
+  }
+
+  // 清屏
+  ctx.clearRect(0, 0, W, H);
+
+  // 绘制
+  drawCourt();
+  player.draw();
+  aiPlayer.draw();
+  ball.draw();
+
+  requestAnimationFrame(gameLoop);
+}
+
+// ===== 计时器 =====
+function startTimer() {
+  const timerEl = document.getElementById('timer');
+  timerEl.textContent = gameTime;
+  const interval = setInterval(() => {
+    gameTime--;
+    timerEl.textContent = gameTime;
+    if (gameTime <= 0) {
+      clearInterval(interval);
+      endGame();
+    }
+  }, 1000);
+}
+
+function endGame() {
+  gameRunning = false;
+  const overlay = document.getElementById('endOverlay');
+  const title = document.getElementById('endTitle');
+  const desc = document.getElementById('endDesc');
+
+  title.textContent = '比赛结束';
+  title.style.color = '#ef5350';
+  desc.textContent = `你已被强制为十中捐款 ${aiScore} 万元`;
+  overlay.classList.remove('hidden');
+}
+
+// ===== 初始化 =====
+function initGame() {
+  playerScore = 0;
+  aiScore = 0;
+  gameTime = 60;
+  updateScoreboard();
+
+  player = new Player(W * 0.3, H / 2, true, COLORS.player, COLORS.playerDark);
+  aiPlayer = new Player(W * 0.7, H / 2, false, COLORS.ai, COLORS.aiDark, 'ai');
+  ball = new Ball();
+  ball.resetBall();
+
+  document.getElementById('timer').textContent = gameTime;
+}
+
+function startGame() {
+  document.getElementById('startOverlay').classList.add('hidden');
+  document.getElementById('endOverlay').classList.add('hidden');
+  initGame();
+  gameRunning = true;
+  lastTime = performance.now();
+  startTimer();
+  requestAnimationFrame(gameLoop);
+}
+
+// ===== 事件监听 =====
+document.addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+  // 空格 = 向右投（右边篮筐）
+  if (e.code === 'Space' && gameRunning) {
+    e.preventDefault();
+    if (player.hasBall) {
+      ball.shootAt(true, COURSE.rightHoop);
+    }
+  }
+  // E = 抢断（抢电脑手中的球）
+  if (e.code === 'KeyE' && gameRunning) {
+    e.preventDefault();
+    if (!player.hasBall && aiPlayer.hasBall) {
+      const dist = Math.sqrt(
+        Math.pow(player.x - aiPlayer.x, 2) +
+        Math.pow(player.y - aiPlayer.y, 2)
+      );
+      if (dist < 55) {
+        // 傅俊翔有概率防住抢断（60% 概率抢到）
+        if (Math.random() < 0.6) {
+          aiPlayer.hasBall = false;
+          player.hasBall = true;
+          ball.inAIHands = false;
+          ball.inPlayerHands = true;
+          ball.shooting = false;
+          ball.vx = 0;
+          ball.vy = 0;
+          showMsg('抢断成功!', '#4fc3f7');
+        } else {
+          showMsg('傅俊翔防住了!', '#ef5350');
+        }
+      }
+    }
+  }
+  // F = 盖帽（打断空中的球）
+  if (e.code === 'KeyF' && gameRunning) {
+    e.preventDefault();
+    if (ball.shooting) {
+      const dist = Math.sqrt(
+        Math.pow(player.x - ball.x, 2) +
+        Math.pow(player.y - ball.y, 2)
+      );
+      if (dist < 60) {
+        // 盖帽成功，球变成自由球
+        ball.shooting = false;
+        ball.vx = (Math.random() - 0.5) * 8;
+        ball.vy = -5;
+        ball.shootTarget = null;
+        showMsg('盖帽!', '#4fc3f7');
+      }
+    }
+  }
+  // Q = 短时免疫抢断
+  if (e.code === 'KeyQ' && gameRunning) {
+    e.preventDefault();
+    if (player.immuneCooldown <= 0) {
+      player.isImmune = true;
+      player.immuneTimer = 120; // 2秒（60帧/秒）
+      player.immuneCooldown = 300; // 5秒冷却
+      showMsg('免疫!', '#4fc3f7');
+    }
+  }
+  // Shift = 冲刺闪避
+  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+    e.preventDefault();
+    if (gameRunning && player.dodgeCooldown <= 0) {
+      if (player.dodge()) {
+        player.isDodging = true;
+        player.dodgeAnimFrame = 0;
+        if (player.hasBall) {
+          ball.x = player.x + player.direction * 25;
+          ball.y = player.y + 10;
+        }
+      }
+    }
+  }
+});
+
+document.addEventListener('keyup', (e) => {
+  keys[e.code] = false;
+});
+
+// ===== 移动端虚拟摇杆 =====
+const joystick = document.getElementById('joystick');
+const knob = document.getElementById('joystickKnob');
+const joystickRadius = 70; // 摇杆最大移动半径
+let joystickTouchId = null;
+
+function updateJoork(dx, dy) {
+  // 限制在摇杆范围内
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  const maxDist = 35; // 摇杆球最大移动距离
+  if (dist > maxDist) {
+    dx = (dx / dist) * maxDist;
+    dy = (dy / dist) * maxDist;
+  }
+  knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+  // 根据偏移量设置方向键
+  const deadZone = 10; // 死区，小于这个不算移动
+  keys['ArrowUp'] = dy < -deadZone;
+  keys['ArrowDown'] = dy > deadZone;
+  keys['ArrowLeft'] = dx < -deadZone;
+  keys['ArrowRight'] = dx > deadZone;
+}
+
+function resetJoystick() {
+  knob.style.transform = 'translate(-50%, -50%)';
+  keys['ArrowUp'] = false;
+  keys['ArrowDown'] = false;
+  keys['ArrowLeft'] = false;
+  keys['ArrowRight'] = false;
+}
+
+joystick.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  if (joystickTouchId !== null) return;
+  const touch = e.changedTouches[0];
+  joystickTouchId = touch.identifier;
+  const rect = joystick.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const dx = touch.clientX - centerX;
+  const dy = touch.clientY - centerY;
+  updateJoork(dx, dy);
+});
+
+joystick.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    const touch = e.changedTouches[i];
+    if (touch.identifier === joystickTouchId) {
+      const rect = joystick.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const dx = touch.clientX - centerX;
+      const dy = touch.clientY - centerY;
+      updateJoork(dx, dy);
+    }
+  }
+});
+
+joystick.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    if (e.changedTouches[i].identifier === joystickTouchId) {
+      joystickTouchId = null;
+      resetJoystick();
+    }
+  }
+});
+
+// 鼠标兼容（调试用）
+let mouseDown = false;
+joystick.addEventListener('mousedown', (e) => {
+  mouseDown = true;
+  const rect = joystick.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const dx = e.clientX - centerX;
+  const dy = e.clientY - centerY;
+  updateJoork(dx, dy);
+});
+document.addEventListener('mousemove', (e) => {
+  if (mouseDown) {
+    const rect = joystick.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const dx = e.clientX - centerX;
+    const dy = e.clientY - centerY;
+    updateJoork(dx, dy);
+  }
+});
+document.addEventListener('mouseup', () => {
+  if (mouseDown) {
+    mouseDown = false;
+    resetJoystick();
+  }
+});
+
+// 技能按钮：触发对应按键事件
+function triggerKey(keyCode) {
+  const e = new KeyboardEvent('keydown', { code: keyCode });
+  document.dispatchEvent(e);
+}
+document.getElementById('btnShoot').addEventListener('touchstart', (e) => {
+  e.preventDefault(); triggerKey('Space');
+});
+document.getElementById('btnSteal').addEventListener('touchstart', (e) => {
+  e.preventDefault(); triggerKey('KeyE');
+});
+document.getElementById('btnBlock').addEventListener('touchstart', (e) => {
+  e.preventDefault(); triggerKey('KeyF');
+});
+document.getElementById('btnDodge').addEventListener('touchstart', (e) => {
+  e.preventDefault(); triggerKey('ShiftLeft');
+});
+document.getElementById('btnImmune').addEventListener('touchstart', (e) => {
+  e.preventDefault(); triggerKey('KeyQ');
+});
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('restartBtn').addEventListener('click', startGame);
+
+// 初始绘制一帧
+drawCourt();
+player = new Player(W * 0.3, H / 2, true, COLORS.player, COLORS.playerDark);
+aiPlayer = new Player(W * 0.7, H / 2, false, COLORS.ai, COLORS.aiDark, 'ai');
+ball = new Ball();
+player.draw();
+aiPlayer.draw();
+ball.draw();
+</script>
+
+</body>
+</html>
